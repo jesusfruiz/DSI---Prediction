@@ -18,7 +18,10 @@ andalucia = output['historic'][0]
 data = {}
 for key in andalucia.keys():
     print(key)
-    data[key] = np.array(andalucia[key])[0]
+    array = np.array(andalucia[key])
+    if(len(array) == 1): 
+        array = array[0]
+    data[key] = array
 
 df = pd.DataFrame(data)
 print(df)
