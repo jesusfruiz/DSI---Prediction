@@ -16,22 +16,25 @@ output, name_ccaa, iso_ccaa, data_spain = eng.HistoricDataSpain(nargout=4)
 andalucia = output['historic'][0]
 
 data = {}
+y = {}
 for key in andalucia.keys():
-    print(key)
     array = np.array(andalucia[key])
     if(len(array) == 1): 
         array = array[0]
     data[key] = array
-
-df = pd.DataFrame(data)
-print(df)
     
-#data = andalucia['AcumulatedCases']
-#data = np.asarray(data)
-#data = data[0].reshape(-1, 1)
-#
-#days = np.asarray(range(len(data[0])))
-#regressor = RandomForestRegressor(n_estimators=4, max_depth = 3, criterion='mae', random_state=0)
-#regressor.fit(data[0], days)
-#
-#pred = regressor.predict(list(range(len(days), len(days)+7)))
+y['Dates'] = np.array(range(0, len(data['AcumulatedCases'])))
+df = pd.DataFrame(data)
+y = pd.DataFrame(y)
+print(df)
+print(y)
+df = df.drop(columns='label_x')
+    
+regressor = RandomForestRegressor(n_estimators=4, max_depth = 3, criterion='mae', random_state=0)
+regressor.fit(y, df)
+
+ypred = {}
+ypred['Dates'] = np.array([59, 60, 61, 62, 63, 64, 65])
+ypred = pd.DataFrame(ypred)
+
+pred = regressor.predict(ypred)
