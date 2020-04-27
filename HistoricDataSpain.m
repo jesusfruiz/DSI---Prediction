@@ -65,31 +65,44 @@ for ix_ccaa = 2 : size(ccaa_data, 1)
         AcumulatedCases = 0;
     end
     
-    Hospitalized = row_data{3};
+      AcumulatedPRC = row_data{3};
+    if ismissing(AcumulatedPRC)
+        AcumulatedPRC = 0;
+    end
+      AcumulatedTestAc = row_data{4};
+    if ismissing(AcumulatedTestAc)
+        AcumulatedTestAc = 0;
+    end
+    Hospitalized = row_data{5};
     if ismissing(Hospitalized)
         Hospitalized = 0;
     end
     
-    Critical = row_data{4};
+    Critical = row_data{6};
     if ismissing(Critical)
         Critical = 0;
     end
     
-    Deaths = row_data{5};
+    Deaths = row_data{7};
     if ismissing(Deaths)
         Deaths = 0;
     end
     
-    AcumulatedRecoveries = row_data{6};
+    AcumulatedRecoveries = row_data{8};
     if ismissing(AcumulatedRecoveries)
         AcumulatedRecoveries = 0;
     end
+    
+    
+
     
     if isempty(ix_ccaa_rep)
 
         data = struct;
        
         data.AcumulatedCases = AcumulatedCases;
+        data.AcumulatedPRC = AcumulatedPRC;
+        data.AcumulatedTestAc = AcumulatedTestAc;
         data.Hospitalized = Hospitalized;
         data.Critical = Critical;
         data.Deaths = Deaths;
@@ -107,6 +120,8 @@ for ix_ccaa = 2 : size(ccaa_data, 1)
     data = historic{ix_ccaa_rep, 3};
     
     data.AcumulatedCases(end+1) = AcumulatedCases;
+    data.AcumulatedPRC(end+1) = AcumulatedPRC;
+    data.AcumulatedTestAc(end+1) = AcumulatedTestAc;
     data.Hospitalized(end+1) = Hospitalized;
     data.Critical(end+1) = Critical;
     data.Deaths(end+1) = Deaths;
@@ -122,16 +137,30 @@ end
 for ix_ccaa = 1 : size(historic, 1)
 
     data = historic{ix_ccaa, 3}; 
-
-    data.Cases = data.AcumulatedCases - data.Deaths - data.AcumulatedRecoveries;
     
+    for idx_day = 1 : length(data.label_x)
+         if(data.AcumulatedCases(idx_day) == 0 )
+            data.Cases(idx_day) = data.AcumulatedPRC(idx_day) - data.Deaths(idx_day) - data.AcumulatedRecoveries(idx_day);
+         else
+            data.Cases(idx_day) = data.AcumulatedCases(idx_day) - data.Deaths(idx_day) - data.AcumulatedRecoveries(idx_day);
+        end
+    end
     data.DailyCases = data.AcumulatedCases(1);
     data.DailyDeaths = data.Deaths(1);
     data.DailyRecoveries = data.AcumulatedRecoveries(1);
     
     for idx_day = 1 : length(data.label_x) - 1
         
-        data.DailyCases(idx_day+1) = data.AcumulatedCases(idx_day+1) - data.AcumulatedCases(idx_day);
+        NextAcumulatedCases = data.AcumulatedCases(idx_day+1);
+        if( NextAcumulatedCases == 0)
+            NextAcumulatedCases = data.AcumulatedPRC(idx_day+1);
+        end
+        ActualAcumulatedCases = data.AcumulatedCases(idx_day);
+        if( ActualAcumulatedCases == 0)
+            ActualAcumulatedCases = data.AcumulatedPRC(idx_day);
+        end
+        
+        data.DailyCases(idx_day+1) = NextAcumulatedCases - ActualAcumulatedCases;
         data.DailyCases(find(data.DailyCases<0)) = 0;
         
         data.DailyDeaths(idx_day+1) = data.Deaths(idx_day+1) - data.Deaths(idx_day);
@@ -157,6 +186,8 @@ for ix_ccaa = 1 : size(historic, 1)
     if ix_ccaa == 1
     
         data_spain.AcumulatedCases = data_aux.AcumulatedCases;
+        data_spain.AcumulatedPRC = data_aux.AcumulatedPRC;
+        data_spain.AcumulatedTestAc = data_aux.AcumulatedTestAc;
         data_spain.Hospitalized = data_aux.Hospitalized;
         data_spain.Critical = data_aux.Critical;
         data_spain.Deaths = data_aux.Deaths;
@@ -173,6 +204,9 @@ for ix_ccaa = 1 : size(historic, 1)
     end
 
     data_spain.AcumulatedCases = data_spain.AcumulatedCases + data_aux.AcumulatedCases;
+    data_spain.AcumulatedPRC = data_spain.AcumulatedPRC + data_aux.AcumulatedPRC;
+    data_spain.AcumulatedTestAc = data_spain.AcumulatedTestAc + data_aux.AcumulatedTestAc;
+
     data_spain.Hospitalized = data_spain.Hospitalized + data_aux.Hospitalized;
     data_spain.Critical = data_spain.Critical + data_aux.Critical;
     data_spain.Deaths = data_spain.Deaths + data_aux.Deaths;
