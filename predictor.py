@@ -7,16 +7,65 @@ Este es un archivo temporal.
 
 import matlab.engine 
 import math
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import load_digits
+from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV,\
+                                 validation_curve
 import numpy as np
 import pandas as pd
 
 def get_model(x_train, y_train, random_grid):
     rf = RandomForestRegressor()
-    rf_random = GridSearchCV(rf, random_grid, cv = 3, verbose=1, n_jobs = -1)
+    rf_random = GridSearchCV(rf, random_grid, cv = 2, verbose=1, n_jobs = -1)
     rf_random.fit(x_train, y_train)
+    print(rf_random.best_params_)
     return rf_random
+
+def draw_validation_curve(train_scores, test_scores, param_range):
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+
+    plt.title("Validation Curve with SVM")
+    plt.xlabel(r"$\gamma$")
+    plt.ylabel("Score")
+    plt.ylim(0.0, 1.1)
+    lw = 2
+    plt.semilogx(param_range, train_scores_mean, label="Training score",
+                 color="darkorange", lw=lw)
+    plt.fill_between(param_range, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.2,
+                     color="darkorange", lw=lw)
+    plt.semilogx(param_range, test_scores_mean, label="Cross-validation score",
+                 color="navy", lw=lw)
+    plt.fill_between(param_range, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.2,
+                     color="navy", lw=lw)
+    plt.legend(loc="best")
+    plt.show()
+    
+def transform_matlab_data(matlab_data):
+    data = {}
+    
+    for key in matlab_data.keys():
+        if key == 'AcumulatedCases':
+            array = np.array(matlab_data['AcumulatedCases']) + \
+                                    np.array(matlab_data['AcumulatedPRC'])
+        elif key == 'AcumulatedPRC' or key == 'AcumulatedTestAc' :
+            continue
+        else:
+            array = np.array(matlab_data[key])
+                
+        if(len(array) == 1): 
+            array = array[0]
+                    
+        data[key] = array
+        
+    return pd.DataFrame(data)
 
 vars_to_predict = ['DailyCases', 'Hospitalized', 'Critical', 'DailyDeaths', 'DailyRecoveries']
 
@@ -25,64 +74,35 @@ output, name_ccaa, iso_ccaa, data_spain = eng.HistoricDataSpain(nargout=4)
 
 andalucia = output['historic'][0]
 
+#data_spain = transform_matlab_data(data_spain)
 x_data = {}
 y_data = {}
 
-for key in andalucia.keys():
-    if key == 'AcumulatedCases':
-        array = np.array(andalucia['AcumulatedCases']) + np.array(andalucia['AcumulatedPRC'])
-    elif key == 'AcumulatedPRC' or key == 'AcumulatedTestAc' :
-        continue
-    else:
-        array = np.array(andalucia[key])
-    if(len(array) == 1): 
-        array = array[0]
-    x_data[key] = array
-#    if key in vars_to_predict:
-#        y_data[key] = array
-#    else:
-#        x_data[key] = array
-    
-#y['Dates'] = np.array(range(0, len(data['AcumulatedCases'])))
-x = pd.DataFrame(x_data)
-x = x.drop(columns='label_x')
+andalucia = transform_matlab_data(andalucia)
+andalucia = andalucia.drop(columns='label_x')
 
-# Number of trees in random forest
-n_estimators = [50, 100, 200, 500, 600]
-# Number of features to consider at every split
-max_features = ['auto', 'sqrt']
-# Maximum number of levels in tree
-max_depth = [10, 30, 60, 80, 100]
-max_depth.append(None)
-# Minimum number of samples required to split a node
-min_samples_split = [2, 5, 10]
-# Minimum number of samples required at each leaf node
-min_samples_leaf = [1, 2, 4]
-
-# Create the random grid
+n_estimators = [5, 15, 30, 60, 120, 300, 600, 1000]
+max_features = [1, 2, 3, 4, 5, 6, 7, 8]
+max_features.append("auto")
+max_features.append("sqrt")
 random_grid = {'n_estimators': n_estimators,
-               'max_features': max_features,
-               'max_depth': max_depth,
-               'min_samples_split': min_samples_split,
-               'min_samples_leaf': min_samples_leaf}
-print(random_grid)
+               'max_features': max_features}
+#max_features = [1,2,3,4,5,6,7,8]
 
-#regressor = RandomForestRegressor(n_estimators=4, max_depth = 3, criterion='mae', random_state=0)
-#regressor.fit(x_train, y_train)
-#
-#ypred = {}
-#ypred['Dates'] = np.array([60, 61, 62, 63, 64, 65, 66])
-#ypred = pd.DataFrame(ypred)
-#
-#pred = regressor.predict(ypred)
 
-init = 55
+init = 60
+x = andalucia.astype('int32')       
 for var in vars_to_predict:
-    regressor = get_model(x.drop(columns=var).loc[:init], x[var].loc[:init], random_grid)
+    x_train = x.drop(columns=var).loc[:init]
+    y_train = x[var].loc[:init]
+    x_test = x.drop(columns=var).loc[init+1:init+7]
+    y_test = x[var].loc[init+1:init+7]
     
-    pred = regressor.predict(x.drop(columns=var).loc[init+1:init+7])
+    regressor = get_model(x_train, y_train, random_grid)
+    
+    pred = regressor.predict(x_test)
     
     print("The prediction and the real results are the following in the var", var)
     print(pred)
-    print(x[var].loc[init+1:init+7])
+    print(y_test)
         
