@@ -19,7 +19,7 @@ import pandas as pd
 
 def get_model(x_train, y_train, random_grid):
     rf = RandomForestRegressor()
-    rf_random = GridSearchCV(rf, random_grid, cv = 2, verbose=1, n_jobs = -1)
+    rf_random = GridSearchCV(rf, random_grid, cv = 5, verbose=1, n_jobs = -1)
     rf_random.fit(x_train, y_train)
     print(rf_random.best_params_)
     return rf_random
