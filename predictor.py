@@ -12,17 +12,27 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import load_digits
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import RandomizedSearchCV, GridSearchCV,\
-                                 validation_curve
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import make_scorer, mean_absolute_error
 import numpy as np
 import pandas as pd
+import statistics
 
-def get_model(x_train, y_train, random_grid):
+def get_model(x_train, y_train, grid, score):
     rf = RandomForestRegressor()
-    rf_random = GridSearchCV(rf, random_grid, cv = 5, verbose=1, n_jobs = -1)
-    rf_random.fit(x_train, y_train)
-    print(rf_random.best_params_)
-    return rf_random
+    rf = GridSearchCV(rf, grid, cv = 5, verbose=1, scoring=score, n_jobs = -1)
+    rf.fit(x_train, y_train)
+    print(rf.best_params_)
+    print(rf.scorer_)
+    print(rf.best_estimator_)
+    print("The best score is", rf.best_score_)
+    return rf
+
+def score_function(y_pred, y_true):
+    diff = np.abs(y_true - y_pred, dtype=np.float64)
+    result = np.divide(diff, y_true, out=np.zeros_like(diff), where=y_true!=0, dtype=np.float64)
+    ret = np.mean(result)
+    return ret
 
 def draw_validation_curve(train_scores, test_scores, param_range):
     train_scores_mean = np.mean(train_scores, axis=1)
@@ -67,42 +77,40 @@ def transform_matlab_data(matlab_data):
         
     return pd.DataFrame(data)
 
+def predict_community_data(ccaa_data, grid, init, score):
+    for var in vars_to_predict:
+        x_train = ccaa_data.drop(columns=var).loc[:init]
+        y_train = ccaa_data[var].loc[:init]
+        x_test = ccaa_data.drop(columns=var).loc[init+1:init+7]
+        y_test = ccaa_data[var].loc[init+1:init+7]
+        
+        regressor = get_model(x_train, y_train, grid, score)
+        
+        pred = regressor.predict(x_test)
+        
+        print("The prediction and the real results are the following in the var", var)
+        print(pred)
+        print(y_test)
+
 vars_to_predict = ['DailyCases', 'Hospitalized', 'Critical', 'DailyDeaths', 'DailyRecoveries']
 
 eng = matlab.engine.start_matlab() 
 output, name_ccaa, iso_ccaa, data_spain = eng.HistoricDataSpain(nargout=4)
 
-andalucia = output['historic'][0]
-
-#data_spain = transform_matlab_data(data_spain)
-x_data = {}
-y_data = {}
-
-andalucia = transform_matlab_data(andalucia)
-andalucia = andalucia.drop(columns='label_x')
-
-n_estimators = [5, 15, 30, 60, 120, 300, 600, 1000]
+n_estimators = [30, 60, 120, 300, 600, 1200]
 max_features = [1, 2, 3, 4, 5, 6, 7, 8]
 max_features.append("auto")
 max_features.append("sqrt")
-random_grid = {'n_estimators': n_estimators,
-               'max_features': max_features}
-#max_features = [1,2,3,4,5,6,7,8]
-
+grid = {'n_estimators': n_estimators,
+        'max_features': max_features}
+score = make_scorer(score_function, greater_is_better=False)
 
 init = 60
-x = andalucia.astype('int32')       
-for var in vars_to_predict:
-    x_train = x.drop(columns=var).loc[:init]
-    y_train = x[var].loc[:init]
-    x_test = x.drop(columns=var).loc[init+1:init+7]
-    y_test = x[var].loc[init+1:init+7]
+for index, ccaa_data in enumerate(output['historic']):
+    ccaa_data = transform_matlab_data(ccaa_data)
+    ccaa_data = ccaa_data.drop(columns='label_x')
+    print("Calculate prediction for ", name_ccaa[index])
+    predict_community_data(ccaa_data, grid, init, score)
     
-    regressor = get_model(x_train, y_train, random_grid)
-    
-    pred = regressor.predict(x_test)
-    
-    print("The prediction and the real results are the following in the var", var)
-    print(pred)
-    print(y_test)
+
         
