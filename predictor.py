@@ -53,8 +53,8 @@ def predict_community_data(ccaa_data, grid, init, score):
     for var in vars_to_predict:
         x_train = ccaa_data.drop(columns=var).loc[:init]
         y_train = ccaa_data[var].loc[:init]
-        x_test = ccaa_data.drop(columns=var).loc[init+1:init+7]
-        y_test = ccaa_data[var].loc[init+1:init+7]
+        x_test = ccaa_data.drop(columns=var).loc[init+1:init+num_predictions]
+        y_test = ccaa_data[var].loc[init+1:init+num_predictions]
         
         regressor = get_model(x_train, y_train, grid, score)
         
@@ -63,30 +63,33 @@ def predict_community_data(ccaa_data, grid, init, score):
         print("The prediction and the real results are the following in the var", var)
         print(pred)
         print(y_test)
-        plot([61,62,63,64,65,66,67], pred, [61,62,63,64,65,66,67], y_test)   # generar el gráfico de la función y=x   
+        plot(list(range(init+1, init+num_predictions+1)), pred, list(range(init+1, init+num_predictions+1)), y_test)   # generar el gráfico de la función y=x   
         show()
 
 vars_to_predict = ['DailyCases', 'Hospitalized', 'Critical', 'DailyDeaths', 'DailyRecoveries']
+day_of_prediction = "15-04-2020"
 random.seed(0)
 np.random.seed(0)
+num_predictions = 7
 
 eng = matlab.engine.start_matlab() 
 output, name_ccaa, iso_ccaa, data_spain = eng.HistoricDataSpain(nargout=4)
 
 n_estimators = [5, 30, 60, 120, 300, 600]
 max_features = [3, 4, 5, 6, 7, 8]
-max_features.append("auto")
-max_features.append("sqrt")
 grid = {'n_estimators': n_estimators,
         'max_features': max_features}
+
 score = make_scorer(score_function, greater_is_better=False)
 
-init = 60
+data_spain = transform_matlab_data(data_spain)
+day_index = data_spain.index[data_spain.label_x == day_of_prediction].tolist()[0]
+
 for index, ccaa_data in enumerate(output['historic']):
     ccaa_data = transform_matlab_data(ccaa_data)
     ccaa_data = ccaa_data.drop(columns='label_x')
     print("Calculate prediction for ", name_ccaa[index])
-    predict_community_data(ccaa_data, grid, init, score)
+    predict_community_data(ccaa_data, grid, day_index, score)
     
 
         
