@@ -7,10 +7,10 @@ Este es un archivo temporal.
 
 import matlab.engine 
 import matplotlib.pyplot as plt
+import os
 from pylab import * # importar todas las funciones de pylab
 
 from sklearn.datasets import load_digits
-from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import make_scorer, mean_absolute_error
@@ -66,9 +66,10 @@ def predict_community_data(ccaa_data, hyperparameters, init):
         
         
         print("The prediction and the real results are the following in the var", var)
+        pred = list(map(lambda x: round(x), pred))
         print(pred)
         print(y_test)
-        file[var] += list(pred)
+        file[vars_traductions[var]] += pred
         plot(list(range(init+1, init+num_predictions+1)), pred, list(range(init+1, init+num_predictions+1)), y_test)   # generar el gráfico de la función y=x   
         show()
         
@@ -86,17 +87,16 @@ def get_optimal_hyperparameters(data_spain, grid, init, scorer):
     return hyperparameters
 
 vars_to_predict = ['DailyCases', 'Hospitalized', 'Critical', 'DailyDeaths', 'DailyRecoveries']
-
-file = {'CCAA': [],
-        'FECHA': [],
-        'DailyCases': [],
-        'Hospitalized': [],
-        'Critical': [],
-        'DailyDeaths': [],
-        'DailyRecoveries': []
+vars_traductions = {
+            'DailyCases': 'CASOS', 
+            'Hospitalized': 'Hospitalizados', 
+            'Critical': 'UCI', 
+            'DailyDeaths': 'Fallecidos', 
+            'DailyRecoveries': 'Recuperados'
         }
 
-day_of_prediction = "15-04-2020"
+first_day_to_predict = "16-04-2020"
+last_day_to_predict = "30-04-2020"
 random.seed(0)
 np.random.seed(0)
 num_predictions = 7
@@ -104,7 +104,7 @@ num_predictions = 7
 eng = matlab.engine.start_matlab() 
 output, name_ccaa, iso_ccaa, data_spain = eng.HistoricDataSpain(nargout=4)
 
-n_estimators = [5, 30, 60, 120, 300, 600]
+n_estimators = [30, 60, 120, 300, 600, 1000]
 max_features = [3, 4, 5, 6, 7, 8]
 grid = {'n_estimators': n_estimators,
         'max_features': max_features}
@@ -112,24 +112,38 @@ grid = {'n_estimators': n_estimators,
 scorer = make_scorer(score_function, greater_is_better=False)
 
 data_spain = transform_matlab_data(data_spain)
-day_index = data_spain.index[data_spain.label_x == day_of_prediction].tolist()[0]
+first_day_index = data_spain.index[data_spain.label_x == first_day_to_predict].tolist()[0]
+last_day_index = data_spain.index[data_spain.label_x == last_day_to_predict].tolist()[0]
 
-hyperparameters = get_optimal_hyperparameters(data_spain, grid, day_index, scorer)
+hyperparameters = get_optimal_hyperparameters(data_spain, grid, first_day_index, scorer)
 
+if not os.path.exists("files"):
+    os.mkdir("files")
 
-
-for index, ccaa_data in enumerate(output['historic']):
-    ccaa_data = transform_matlab_data(ccaa_data)
+for day_to_predict in range(first_day_index, last_day_index+1):
+    file = {'CCAA': [],
+        'FECHA': [],
+        'CASOS': [],
+        'Hospitalizados': [],
+        'UCI': [],
+        'Fallecidos': [],
+        'Recuperados': []
+        }
+    for index, ccaa_data in enumerate(output['historic']):
+        ccaa_data = transform_matlab_data(ccaa_data)
     
-    file['CCAA'] += [iso_ccaa[index]] * num_predictions
-    for i in range(day_index+1, day_index+1+num_predictions):    
-        file['FECHA'] += [ccaa_data.label_x[i]]
+        file['CCAA'] += [iso_ccaa[index]] * num_predictions
+        for i in range(day_to_predict+1, day_to_predict+1+num_predictions):    
+            file['FECHA'] += [ccaa_data.label_x[i]]
     
-    ccaa_data = ccaa_data.drop(columns='label_x')
-    print("Calculate prediction for ", name_ccaa[index])
-    predict_community_data(ccaa_data, hyperparameters, day_index)
-    
-file = pd.DataFrame(file)
-    
+        ccaa_data = ccaa_data.drop(columns='label_x')
+        print("Calculate prediction for ", name_ccaa[index])
+        predict_community_data(ccaa_data, hyperparameters, day_to_predict)
+   
+    df = pd.DataFrame(file)
+    filename = "JFBR_JAGL_"
+    filename += data_spain.label_x[day_to_predict].replace("-", "_")
+    filename += ".csv"
+    df.to_csv("files/" + filename, index=False)    
 
         
