@@ -182,24 +182,6 @@ for day_to_predict in range(first_day_index, last_day_index+1):
         'Fallecidos': [],
         'Recuperados': []
         }
-<<<<<<< HEAD
-=======
-    
-    # Predict data for all communities in one day
-    for index, ccaa_data in enumerate(output['historic']):
-        ccaa_data = transform_matlab_data(ccaa_data)
-        
-        # Add CCAA and FECHA fields for the next seven days in the file
-        file['CCAA'] += [iso_ccaa[index]] * num_predictions
-        for i in range(day_to_predict+1, day_to_predict+1+num_predictions):    
-            file['FECHA'] += [ccaa_data.label_x[i]]
-        
-        #Remove label_x columm which is useless for prediction
-        ccaa_data = ccaa_data.drop(columns='label_x')
-        
-        print("Calculate prediction for ", name_ccaa[index])
-        predict_community_data(ccaa_data, hyperparameters, day_to_predict)
->>>>>>> e79dc86fb3a0d87799007b0d71130b41d6ace69b
     
     predict_data_from_all_commmunities_for_a_day(file)    
     save_in_csv(file)   
