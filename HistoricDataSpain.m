@@ -1,5 +1,7 @@
 function [output, name_ccaa, iso_ccaa, data_spain] = HistoricDataSpain()
 
+missingDataText = 'NA';
+
 cod_ccaa_cell = {'AN', 'Andalucía';
             'AR', 'Aragón';
             'AS', 'Principado de Asturias';
@@ -26,7 +28,7 @@ end
 
     
 %% Import data
-results_url = 'https://covid19.isciii.es/resources/serie_historica_acumulados.csv';
+results_url = 'https://cnecovid.isciii.es/covid19/resources/agregados.csv';
 websave("data/ccaa_data_isciii.csv", results_url);
 ccaa_data = readcell("data/ccaa_data_isciii.csv", 'DatetimeType', 'text');
 
@@ -34,6 +36,17 @@ ccaa_data = readcell("data/ccaa_data_isciii.csv", 'DatetimeType', 'text');
 %% Historic data
 historic = cell(1,3); % (# countries, 3)
 
+%% Replace nonexistent values
+
+ccaa_data = cellfun(@(el) getReplacedNonexistentValues(el), ccaa_data, 'UniformOutput', false);
+
+    function val = getReplacedNonexistentValues(element)
+        if ischar(element) && strcmp(element, missingDataText)
+            val = 0;
+        else
+            val = element;
+        end
+    end
 
 %% CSV Data
 for ix_ccaa = 2 : size(ccaa_data, 1)
