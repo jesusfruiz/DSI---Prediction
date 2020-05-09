@@ -18,12 +18,6 @@ import numpy as np
 import pandas as pd
 import random
 
-def get_model(x_train, y_train, grid, score):
-    rf = RandomForestRegressor(random_state=random.seed(0))
-    rf = GridSearchCV(rf, grid, cv = 5, verbose=1, scoring=score, n_jobs = 1)
-    rf.fit(x_train, y_train)
-    return rf
-
 def score_function(y_pred, y_true):
     diff = np.abs(y_true - y_pred, dtype=np.float64)
     result = np.divide(diff, y_true, out=np.zeros_like(diff), where=y_true!=0, dtype=np.float64)
