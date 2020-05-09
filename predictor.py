@@ -99,6 +99,7 @@ def get_optimal_hyperparameters(data_spain, grid, prediction_day_index, scorer):
         hyperparameters[var] = rf.best_params_
     return hyperparameters
 
+
 def save_in_csv(file):
     df = pd.DataFrame(file)
     filename = "JFBR_JAGL_"
@@ -106,6 +107,21 @@ def save_in_csv(file):
     filename += ".csv"
     df.to_csv("files/" + filename, index=False) 
     
+
+def predict_data_from_all_commmunities_for_a_day(file):   
+    for index, ccaa_data in enumerate(output['historic']):
+        ccaa_data = transform_matlab_data(ccaa_data)
+        
+        # Add CCAA and FECHA fields for the next seven days in the file
+        file['CCAA'] += [iso_ccaa[index]] * num_predictions
+        for i in range(day_to_predict+1, day_to_predict+1+num_predictions):    
+            file['FECHA'] += [ccaa_data.label_x[i]]
+        
+        #Remove label_x columm which is useless for prediction
+        ccaa_data = ccaa_data.drop(columns='label_x')
+        
+        print("Calculate prediction for ", name_ccaa[index])
+        predict_community_data(ccaa_data, hyperparameters, day_to_predict)  
 
 ####### MAIN #######
     
@@ -132,7 +148,6 @@ grid = {'n_estimators': n_estimators,
         'max_features': max_features}
 
 # Generate seed to get always the same results
-print(type(random))
 random.seed(0)
 np.random.seed(0)
 
@@ -168,21 +183,7 @@ for day_to_predict in range(first_day_index, last_day_index+1):
         'Recuperados': []
         }
     
-    # Predict data for all communities in one day
-    for index, ccaa_data in enumerate(output['historic']):
-        ccaa_data = transform_matlab_data(ccaa_data)
-        
-        # Add CCAA and FECHA fields for the next seven days in the file
-        file['CCAA'] += [iso_ccaa[index]] * num_predictions
-        for i in range(day_to_predict+1, day_to_predict+1+num_predictions):    
-            file['FECHA'] += [ccaa_data.label_x[i]]
-        
-        #Remove label_x columm which is useless for prediction
-        ccaa_data = ccaa_data.drop(columns='label_x')
-        
-        print("Calculate prediction for ", name_ccaa[index])
-        predict_community_data(ccaa_data, hyperparameters, day_to_predict)
-    
+    predict_data_from_all_commmunities_for_a_day(file)    
     save_in_csv(file)   
 
         
