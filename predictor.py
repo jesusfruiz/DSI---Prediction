@@ -68,15 +68,16 @@ def predict_community_data(ccaa_data, hyperparameters, prediction_day_index):
         regressor.fit(x_train, y_train)
         pred = regressor.predict(x_test)
                 
-        print("The prediction and the real results are the following in the var", var)
-        
         # round data to the near integer
         pred = list(map(lambda x: round(x), pred))
-        print(pred)
-        print(y_test)
+        # print some information about predictions
+        print(f"The prediction for {var} is {pred}")
+        print(f"The real results for {var} are {list(y_test)}")
+        print("The mae of the prediction is ", mean_absolute_error(y_test, pred))
         
         # Save the data in the right column
         file[vars_traductions[var]] += pred
+        # print observations and predictions in a graphic
         plot(list(range(prediction_day_index+1, prediction_day_index+num_predictions+1)),\
              pred, list(range(prediction_day_index+1, prediction_day_index+num_predictions+1)),\
              y_test)
@@ -182,7 +183,7 @@ for day_to_predict in range(first_day_index, last_day_index+1):
         'Fallecidos': [],
         'Recuperados': []
         }
-    
+
     predict_data_from_all_commmunities_for_a_day(file)    
     save_in_csv(file)   
 
